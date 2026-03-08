@@ -1,0 +1,47 @@
+# === OS ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === IDE ===
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+
+# === Java / Maven ===
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# === Node / Frontend ===
+**/node_modules/
+**/dist/
+*.local
+.env.local
+.env.*.local
+
+# === Logs ===
+.logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# === Runtime ===
+.pids/
+*.pid
+*.seed
+*.pid.lock
+
+# === Build cache ===
+.cache/
+.temp/
+.tmp/
