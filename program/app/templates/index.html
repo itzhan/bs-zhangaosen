@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block title %}首页 — 京东手机评论分析系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <!-- 大屏 Hero -->
+  <section class="dashboard-hero mt-3 fade-in">
+    <div class="row align-items-center">
+      <div class="col-lg-6">
+        <h1><i class="bi bi-graph-up-arrow me-2"></i>数据分析总览</h1>
+        <p class="subtitle">基于 SnowNLP 情感分析 · 覆盖 {{ overview.total_brands }} 个主流手机品牌 · {{ overview.total_comments }} 条真实评论</p>
+      </div>
+      <div class="col-lg-6">
+        <div class="row g-3 mt-2">
+          <div class="col-6 col-md-3">
+            <div class="metric-card dark">
+              <div class="metric-value">{{ overview.total_comments }}</div>
+              <div class="metric-label">总评论数</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="metric-card dark">
+              <div class="metric-value">{{ overview.total_brands }}</div>
+              <div class="metric-label">品牌数</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="metric-card dark">
+              <div class="metric-value">{{ overview.avg_score }}</div>
+              <div class="metric-label">平均情感分</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="metric-card dark">
+              <div class="metric-value">{{ overview.sentiment_dist.get('正向', 0) }}</div>
+              <div class="metric-label">正向评论</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 情感分布概览图 -->
+  <div class="row g-4 mb-4 fade-in">
+    <div class="col-lg-5">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot"></span>全局情感分布</div>
+        <div id="overviewPie" class="chart-container" style="min-height:320px;"></div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot" style="background:var(--accent);"></span>品牌情感得分对比</div>
+        <div id="brandBar" class="chart-container" style="min-height:320px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 品牌卡片 -->
+  <section class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="fw-bold mb-0"><i class="bi bi-collection me-2"></i>品牌概览</h4>
+      <a href="{{ url_for('brand.compare') }}" class="btn btn-sm btn-primary-custom">
+        <i class="bi bi-bar-chart-line me-1"></i>对比分析
+      </a>
+    </div>
+    <div class="row g-3">
+      {% for b in overview.brands %}
+      <div class="col-sm-6 col-lg-4 col-xl-3 fade-in" style="animation-delay:{{ loop.index * 0.05 }}s;">
+        <a href="{{ url_for('brand.detail', brand_id=b.id) }}" class="text-decoration-none">
+          <div class="brand-card">
+            <div class="card-header-bar"></div>
+            <div class="card-body">
+              <div class="brand-name">
+                <i class="bi bi-phone me-1"></i>{{ b.name }}
+              </div>
+              <div class="d-flex align-items-baseline gap-2">
+                <span class="brand-score">{{ b.avg_score }}</span>
+                <span class="text-muted" style="font-size:0.8rem;">情感得分</span>
+              </div>
+              <div class="brand-stats">
+                <div class="stat-item">
+                  <span class="stat-value">{{ b.comment_count }}</span>
+                  <span class="stat-label">评论数</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{{ b.pos_rate }}%</span>
+                  <span class="stat-label">好评率</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- 推荐 -->
+  {% if recommended %}
+  <section class="mb-4">
+    <h4 class="fw-bold mb-3"><i class="bi bi-award me-2"></i>智能推荐</h4>
+    <div class="row g-3">
+      {% for r in recommended[:4] %}
+      <div class="col-md-6 col-lg-3 fade-in">
+        <div class="metric-card">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="metric-label">推荐 #{{ loop.index }}</div>
+              <div style="font-weight:600;font-size:1.1rem;margin:0.5rem 0;">{{ r.name }}</div>
+              <div style="font-size:0.85rem;color:var(--text-muted);">综合评分: {{ r.composite_score }}</div>
+            </div>
+            <span class="badge-positive" style="font-size:0.85rem;">{{ r.pos_rate }}%</span>
+          </div>
+          <div class="mt-2">
+            <a href="{{ url_for('brand.detail', brand_id=r.id) }}" class="btn btn-sm btn-accent">查看详情</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // 情感分布饼图
+  var pieChart = echarts.init(document.getElementById('overviewPie'));
+  var distData = {{ overview.sentiment_dist | tojson }};
+  pieChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    color: ['#10B981', '#64748B', '#EF4444'],
+    series: [{
+      type: 'pie',
+      radius: ['40%', '70%'],
+      avoidLabelOverlap: true,
+      itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+      label: { show: true, formatter: '{b}\n{c}条 ({d}%)' },
+      data: [
+        { value: distData['正向'] || 0, name: '正向' },
+        { value: distData['中性'] || 0, name: '中性' },
+        { value: distData['负向'] || 0, name: '负向' },
+      ]
+    }]
+  });
+
+  // 品牌得分柱状图
+  var barChart = echarts.init(document.getElementById('brandBar'));
+  var brands = {{ overview.brands | tojson }};
+  barChart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: brands.map(b => b.name),
+      axisLabel: { rotate: 15 }
+    },
+    yAxis: [
+      { type: 'value', name: '情感得分', min: 0, max: 1 },
+      { type: 'value', name: '好评率 %', min: 0, max: 100 },
+    ],
+    series: [
+      {
+        name: '情感得分',
+        type: 'bar',
+        data: brands.map(b => b.avg_score),
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#1A73E8' },
+            { offset: 1, color: '#4A90E2' }
+          ]),
+          borderRadius: [6, 6, 0, 0]
+        },
+        barWidth: '35%',
+      },
+      {
+        name: '好评率',
+        type: 'line',
+        yAxisIndex: 1,
+        data: brands.map(b => b.pos_rate),
+        smooth: true,
+        itemStyle: { color: '#00BFA5' },
+        lineStyle: { width: 3 },
+        symbol: 'circle',
+        symbolSize: 8,
+      }
+    ]
+  });
+
+  window.addEventListener('resize', function() {
+    pieChart.resize();
+    barChart.resize();
+  });
+});
+</script>
+{% endblock %}

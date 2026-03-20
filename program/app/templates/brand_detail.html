@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% block title %}{{ brand.name }} — 品牌分析{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- 品牌头部 -->
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <div>
+      <h2><i class="bi bi-phone me-2"></i>{{ brand.name }}
+        {% if brand.full_name %}<small class="text-muted ms-2" style="font-size:0.6em;">{{ brand.full_name }}</small>{% endif %}
+      </h2>
+      <p class="breadcrumb-text">
+        <a href="{{ url_for('main.index') }}">首页</a> / 品牌详情 / {{ brand.name }}
+      </p>
+    </div>
+    {% if current_user.is_authenticated %}
+    <form method="post" action="{{ url_for('auth.toggle_favorite', brand_id=brand.id) }}">
+      <button class="btn btn-outline-danger btn-sm"><i class="bi bi-heart me-1"></i>收藏</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- 概览指标 -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="metric-card">
+        <div class="metric-icon blue"><i class="bi bi-chat-dots"></i></div>
+        <div class="metric-value">{{ sentiment.total }}</div>
+        <div class="metric-label">总评论数</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="metric-card">
+        <div class="metric-icon green"><i class="bi bi-emoji-smile"></i></div>
+        <div class="metric-value">{{ sentiment.avg_score }}</div>
+        <div class="metric-label">平均情感得分</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="metric-card">
+        <div class="metric-icon green"><i class="bi bi-hand-thumbs-up"></i></div>
+        <div class="metric-value">{{ sentiment.sentiment_dist.get('正向', 0) }}</div>
+        <div class="metric-label">正向评论</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="metric-card">
+        <div class="metric-icon red"><i class="bi bi-hand-thumbs-down"></i></div>
+        <div class="metric-value">{{ sentiment.sentiment_dist.get('负向', 0) }}</div>
+        <div class="metric-label">负向评论</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图表区 -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-5">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot"></span>情感分布</div>
+        <div id="sentimentPie" class="chart-container"></div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot" style="background:var(--accent);"></span>情感得分时间趋势</div>
+        <div id="trendLine" class="chart-container"></div>
+      </div>
+    </div>
+  </div>
+  <div class="row g-4 mb-4">
+    <div class="col-lg-6">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot" style="background:var(--warning);"></span>关键词词云</div>
+        <div id="keywordChart" class="chart-container"></div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot" style="background:var(--danger);"></span>颜色/型号分布</div>
+        <div id="colorChart" class="chart-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 评论列表 -->
+  <div class="chart-box">
+    <div class="chart-title"><span class="dot"></span>评论列表</div>
+    <div class="d-flex gap-2 mb-3">
+      <a href="{{ url_for('brand.detail', brand_id=brand.id) }}" class="btn btn-sm {% if not label_filter %}btn-primary-custom{% else %}btn-outline-secondary{% endif %}">全部</a>
+      <a href="{{ url_for('brand.detail', brand_id=brand.id, label='正向') }}" class="btn btn-sm {% if label_filter == '正向' %}btn-primary-custom{% else %}btn-outline-secondary{% endif %}">正向</a>
+      <a href="{{ url_for('brand.detail', brand_id=brand.id, label='中性') }}" class="btn btn-sm {% if label_filter == '中性' %}btn-primary-custom{% else %}btn-outline-secondary{% endif %}">中性</a>
+      <a href="{{ url_for('brand.detail', brand_id=brand.id, label='负向') }}" class="btn btn-sm {% if label_filter == '负向' %}btn-primary-custom{% else %}btn-outline-secondary{% endif %}">负向</a>
+    </div>
+
+    {% for c in pagination.items %}
+    <div class="comment-item">
+      <div class="comment-header">
+        <span class="comment-user"><i class="bi bi-person-circle me-1"></i>{{ c.user_nickname or '匿名用户' }}</span>
+        <span class="comment-time">{{ c.comment_time.strftime('%Y-%m-%d') if c.comment_time else '' }}</span>
+      </div>
+      <div class="comment-content">{{ c.content }}</div>
+      <div class="comment-footer">
+        {% if c.sentiment_label == '正向' %}
+          <span class="badge-positive">正向 {{ c.sentiment_score }}</span>
+        {% elif c.sentiment_label == '负向' %}
+          <span class="badge-negative">负向 {{ c.sentiment_score }}</span>
+        {% else %}
+          <span class="badge-neutral">中性 {{ c.sentiment_score }}</span>
+        {% endif %}
+        {% if c.color %}<span style="font-size:0.8rem;color:var(--text-muted);">颜色: {{ c.color }}</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    {% if pagination.pages > 1 %}
+    <nav class="mt-3">
+      <ul class="pagination justify-content-center">
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('brand.detail', brand_id=brand.id, page=p, label=label_filter) }}">{{ p }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var dist = {{ sentiment.sentiment_dist | tojson }};
+  var trend = {{ sentiment.trend | tojson }};
+  var keywords = {{ keywords | tojson }};
+  var colorDist = {{ color_dist | tojson }};
+
+  // 饼图
+  var pie = echarts.init(document.getElementById('sentimentPie'));
+  pie.setOption({
+    tooltip: { trigger: 'item' },
+    color: ['#10B981', '#64748B', '#EF4444'],
+    series: [{
+      type: 'pie', radius: ['40%', '70%'],
+      itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+      label: { formatter: '{b}\n{c}条' },
+      data: [
+        { value: dist['正向'] || 0, name: '正向' },
+        { value: dist['中性'] || 0, name: '中性' },
+        { value: dist['负向'] || 0, name: '负向' },
+      ]
+    }]
+  });
+
+  // 趋势线
+  var line = echarts.init(document.getElementById('trendLine'));
+  line.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: trend.map(t => t.date), axisLabel: { rotate: 30 } },
+    yAxis: { type: 'value', name: '情感得分', min: 0, max: 1 },
+    series: [{
+      type: 'line', data: trend.map(t => t.avg_score), smooth: true,
+      areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(0,191,165,0.3)'},{offset:1,color:'rgba(0,191,165,0.02)'}]) },
+      lineStyle: { color: '#00BFA5', width: 3 },
+      itemStyle: { color: '#00BFA5' },
+    }]
+  });
+
+  // 词云
+  var wc = echarts.init(document.getElementById('keywordChart'));
+  var wcData = keywords.map(function(kw) { return { name: kw[0], value: kw[1] }; });
+  wc.setOption({
+    tooltip: { show: true },
+    series: [{
+      type: 'wordCloud', shape: 'circle',
+      sizeRange: [14, 60], rotationRange: [-30, 30],
+      gridSize: 8, width: '90%', height: '90%',
+      textStyle: {
+        fontFamily: 'Inter, Noto Sans SC, sans-serif',
+        color: function() {
+          var colors = ['#1A73E8','#00BFA5','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6'];
+          return colors[Math.floor(Math.random()*colors.length)];
+        }
+      },
+      data: wcData
+    }]
+  });
+
+  // 颜色/型号分布
+  var colorChart = echarts.init(document.getElementById('colorChart'));
+  colorChart.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: colorDist.map(c => c.color), axisLabel: { rotate: 30 } },
+    yAxis: [
+      { type: 'value', name: '评论数' },
+      { type: 'value', name: '情感得分', min: 0, max: 1 },
+    ],
+    series: [
+      {
+        name: '评论数', type: 'bar', data: colorDist.map(c => c.count),
+        itemStyle: { color: '#8B5CF6', borderRadius: [4,4,0,0] }, barWidth: '40%',
+      },
+      {
+        name: '情感得分', type: 'line', yAxisIndex: 1,
+        data: colorDist.map(c => c.avg_score), smooth: true,
+        itemStyle: { color: '#F59E0B' }, lineStyle: { width: 2 },
+      }
+    ]
+  });
+
+  window.addEventListener('resize', function() {
+    pie.resize(); line.resize(); wc.resize(); colorChart.resize();
+  });
+});
+</script>
+{% endblock %}

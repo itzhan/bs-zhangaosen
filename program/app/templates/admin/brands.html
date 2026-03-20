@@ -1,0 +1,53 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}品牌管理{% endblock %}
+
+{% block admin_content %}
+<h4 class="fw-bold mb-4"><i class="bi bi-phone me-2"></i>品牌管理</h4>
+
+<!-- 添加品牌 -->
+<div class="chart-box mb-4">
+  <div class="chart-title"><span class="dot"></span>添加品牌</div>
+  <form method="post" action="{{ url_for('admin.add_brand') }}" class="row g-3">
+    <div class="col-md-3">
+      <input type="text" name="name" class="form-control" placeholder="品牌名称（如 iPhone17）" required>
+    </div>
+    <div class="col-md-4">
+      <input type="text" name="full_name" class="form-control" placeholder="全称（如 Apple iPhone 17）">
+    </div>
+    <div class="col-md-3">
+      <input type="url" name="jd_url" class="form-control" placeholder="京东链接">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary-custom w-100"><i class="bi bi-plus-lg me-1"></i>添加</button>
+    </div>
+  </form>
+</div>
+
+<!-- 品牌列表 -->
+<div class="chart-box">
+  <div class="table-responsive">
+    <table class="table table-custom">
+      <thead>
+        <tr><th>ID</th><th>名称</th><th>全称</th><th>评论数</th><th>创建时间</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        {% for b in brands %}
+        <tr>
+          <td>{{ b.id }}</td>
+          <td><strong>{{ b.name }}</strong></td>
+          <td>{{ b.full_name }}</td>
+          <td>{{ b.comments.count() }}</td>
+          <td>{{ b.create_time.strftime('%Y-%m-%d') if b.create_time else '' }}</td>
+          <td>
+            <a href="{{ url_for('brand.detail', brand_id=b.id) }}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+            <form method="post" action="{{ url_for('admin.delete_brand', brand_id=b.id) }}" class="d-inline" onsubmit="return confirm('删除将同时清除该品牌所有评论，确定？');">
+              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

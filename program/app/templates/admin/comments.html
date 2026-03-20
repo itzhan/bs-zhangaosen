@@ -1,0 +1,52 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}评论管理{% endblock %}
+
+{% block admin_content %}
+<h4 class="fw-bold mb-4"><i class="bi bi-chat-dots me-2"></i>评论管理</h4>
+<div class="chart-box">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <form method="get" class="d-flex gap-2">
+      <select name="brand_id" class="form-select form-select-sm" style="width:160px;" onchange="this.form.submit()">
+        <option value="">所有品牌</option>
+        {% for b in brands %}
+        <option value="{{ b.id }}" {% if b.id == brand_id %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <span class="text-muted" style="font-size:0.85rem;">共 {{ pagination.total }} 条评论</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-custom">
+      <thead>
+        <tr><th>ID</th><th>品牌</th><th>内容</th><th>情感</th><th>得分</th><th>时间</th></tr>
+      </thead>
+      <tbody>
+        {% for c in pagination.items %}
+        <tr>
+          <td>{{ c.id }}</td>
+          <td>{{ c.brand.name if c.brand else '-' }}</td>
+          <td style="max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ c.content }}">{{ c.content[:60] }}</td>
+          <td>
+            {% if c.sentiment_label == '正向' %}<span class="badge-positive">正向</span>
+            {% elif c.sentiment_label == '负向' %}<span class="badge-negative">负向</span>
+            {% else %}<span class="badge-neutral">中性</span>{% endif %}
+          </td>
+          <td>{{ c.sentiment_score }}</td>
+          <td>{{ c.comment_time.strftime('%Y-%m-%d') if c.comment_time else '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagination.pages > 1 %}
+  <nav>
+    <ul class="pagination justify-content-center">
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="{{ url_for('admin.comments', page=p, brand_id=brand_id) }}">{{ p }}</a></li>
+        {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

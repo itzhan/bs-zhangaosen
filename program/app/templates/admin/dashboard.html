@@ -1,0 +1,46 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}仪表板{% endblock %}
+
+{% block admin_content %}
+<h4 class="fw-bold mb-4"><i class="bi bi-speedometer2 me-2"></i>仪表板</h4>
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="metric-card">
+      <div class="metric-icon blue"><i class="bi bi-people"></i></div>
+      <div class="metric-value">{{ user_count }}</div>
+      <div class="metric-label">注册用户</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="metric-card">
+      <div class="metric-icon green"><i class="bi bi-phone"></i></div>
+      <div class="metric-value">{{ brand_count }}</div>
+      <div class="metric-label">品牌数</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="metric-card">
+      <div class="metric-icon orange"><i class="bi bi-chat-dots"></i></div>
+      <div class="metric-value">{{ comment_count }}</div>
+      <div class="metric-label">评论总数</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="metric-card">
+      <div class="metric-icon red"><i class="bi bi-cloud-download"></i></div>
+      <div class="metric-value">{{ task_count }}</div>
+      <div class="metric-label">爬虫任务</div>
+    </div>
+  </div>
+</div>
+
+<div class="chart-box">
+  <div class="chart-title"><span class="dot"></span>快速操作</div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('admin.users') }}" class="btn btn-primary-custom"><i class="bi bi-people me-1"></i>用户管理</a>
+    <a href="{{ url_for('admin.brands') }}" class="btn btn-accent"><i class="bi bi-phone me-1"></i>品牌管理</a>
+    <a href="{{ url_for('admin.comments') }}" class="btn btn-outline-secondary"><i class="bi bi-chat-dots me-1"></i>评论管理</a>
+    <a href="{{ url_for('admin.tasks') }}" class="btn btn-outline-secondary"><i class="bi bi-cloud-download me-1"></i>爬虫任务</a>
+  </div>
+</div>
+{% endblock %}

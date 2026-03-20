@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}品牌对比 — 京东手机评论分析系统{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="page-header">
+    <h2><i class="bi bi-bar-chart-line me-2"></i>品牌对比分析</h2>
+    <p class="breadcrumb-text"><a href="{{ url_for('main.index') }}">首页</a> / 品牌对比</p>
+  </div>
+
+  <!-- 选择品牌 -->
+  <div class="chart-box mb-4">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label fw-semibold">选择要对比的品牌（至少选2个）</label>
+        <div class="d-flex flex-wrap gap-2">
+          {% for b in brands %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ids" value="{{ b.id }}" id="b{{ b.id }}"
+              {% if b.id in selected_ids %}checked{% endif %}>
+            <label class="form-check-label" for="b{{ b.id }}">{{ b.name }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-primary-custom"><i class="bi bi-arrow-repeat me-1"></i>开始对比</button>
+      </div>
+    </form>
+  </div>
+
+  {% if compare_data %}
+  <!-- 雷达图 + 柱状图 -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-5">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot"></span>多维度雷达对比</div>
+        <div id="radarChart" class="chart-container"></div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot" style="background:var(--accent);"></span>情感得分对比</div>
+        <div id="compareBar" class="chart-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关键词对比 -->
+  <div class="chart-box mb-4">
+    <div class="chart-title"><span class="dot" style="background:var(--warning);"></span>热门关键词对比</div>
+    <div class="row">
+      {% for d in compare_data %}
+      <div class="col-md-{{ 12 // compare_data|length }}">
+        <h6 class="fw-semibold text-center mb-3">{{ d.brand.name }}</h6>
+        <div class="d-flex flex-wrap gap-1 justify-content-center">
+          {% for kw, count in d.top_keywords %}
+          <span class="badge bg-light text-dark border" style="font-size:0.8rem;">{{ kw }} <small class="text-muted">({{ count }})</small></span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if compare_data %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var data = {{ compare_data | tojson }};
+  var colors = ['#1A73E8','#00BFA5','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+
+  // 雷达图
+  var radar = echarts.init(document.getElementById('radarChart'));
+  var maxComment = Math.max(...data.map(d => d.total));
+  radar.setOption({
+    tooltip: {},
+    legend: { data: data.map(d => d.brand.name), bottom: 0 },
+    radar: {
+      indicator: [
+        { name: '情感得分', max: 1 },
+        { name: '正向占比', max: 100 },
+        { name: '评论量', max: maxComment },
+        { name: '关键词数', max: 30 },
+      ],
+      shape: 'circle',
+    },
+    series: [{
+      type: 'radar',
+      data: data.map(function(d, i) {
+        var posRate = d.sentiment_dist['正向'] ? d.sentiment_dist['正向'] / d.total * 100 : 0;
+        return {
+          name: d.brand.name,
+          value: [d.avg_score, posRate, d.total, d.top_keywords.length],
+          itemStyle: { color: colors[i % colors.length] },
+          areaStyle: { opacity: 0.15 },
+        };
+      })
+    }]
+  });
+
+  // 柱状图
+  var bar = echarts.init(document.getElementById('compareBar'));
+  bar.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '12%', containLabel: true },
+    xAxis: { type: 'category', data: data.map(d => d.brand.name) },
+    yAxis: [
+      { type: 'value', name: '情感得分', min: 0, max: 1 },
+      { type: 'value', name: '评论数' },
+    ],
+    series: [
+      {
+        name: '情感得分', type: 'bar',
+        data: data.map(d => d.avg_score),
+        itemStyle: {
+          color: function(p) { return colors[p.dataIndex % colors.length]; },
+          borderRadius: [6,6,0,0]
+        },
+        barWidth: '40%',
+      },
+      {
+        name: '评论数', type: 'bar', yAxisIndex: 1,
+        data: data.map(d => d.total),
+        itemStyle: { color: 'rgba(100,116,139,0.3)', borderRadius: [6,6,0,0] },
+        barWidth: '40%',
+      }
+    ]
+  });
+
+  window.addEventListener('resize', function() { radar.resize(); bar.resize(); });
+});
+</script>
+{% endif %}
+{% endblock %}

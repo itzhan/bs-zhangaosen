@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}个人中心 — 京东手机评论分析系统{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="page-header">
+    <h2><i class="bi bi-person-circle me-2"></i>个人中心</h2>
+    <p class="breadcrumb-text"><a href="{{ url_for('main.index') }}">首页</a> / 个人中心</p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="chart-box text-center py-4">
+        <div style="width:80px;height:80px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;margin-bottom:1rem;">
+          <i class="bi bi-person"></i>
+        </div>
+        <h5 class="fw-bold">{{ current_user.nickname or current_user.username }}</h5>
+        <p style="font-size:0.85rem;color:var(--text-muted);">@{{ current_user.username }}</p>
+        <span class="badge bg-primary">{{ current_user.role }}</span>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem;">注册时间: {{ current_user.create_time.strftime('%Y-%m-%d') if current_user.create_time else 'N/A' }}</p>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div class="chart-box">
+        <div class="chart-title"><span class="dot"></span>我的收藏</div>
+        {% if favorites %}
+        <div class="row g-3">
+          {% for fav in favorites %}
+          <div class="col-sm-6">
+            <div class="d-flex align-items-center p-2 border rounded">
+              <div style="width:40px;height:40px;background:var(--surface-light);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;margin-right:0.75rem;">
+                <i class="bi bi-phone" style="color:var(--primary);"></i>
+              </div>
+              <div>
+                <a href="{{ url_for('brand.detail', brand_id=fav.brand_id) }}" class="fw-semibold">{{ fav.brand_name }}</a>
+                <div style="font-size:0.75rem;color:var(--text-muted);">收藏于 {{ fav.create_time.strftime('%Y-%m-%d') }}</div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">暂无收藏，去<a href="{{ url_for('main.index') }}">首页</a>看看吧</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

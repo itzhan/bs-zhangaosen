@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}数据采集 — 爬虫管理{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4"><i class="bi bi-robot"></i> 数据采集管理</h2>
+
+  <!-- 说明卡片 -->
+  <div class="alert alert-info mb-4">
+    <h6><i class="bi bi-info-circle"></i> 使用说明</h6>
+    <ol class="mb-0 small">
+      <li>输入京东商品页面链接（如 <code>https://item.jd.com/100142456646.html</code>）</li>
+      <li>选择对应品牌（必选），设置要翻的页数</li>
+      <li>点击「开始采集」，系统会在后台自动打开浏览器采集评论</li>
+      <li>采集到的评论会自动进行情感分析并存入数据库</li>
+    </ol>
+    <hr>
+    <small class="text-muted">
+      <i class="bi bi-exclamation-triangle"></i> 注意：首次运行可能需要在弹出的浏览器中手动登录京东账号，登录后浏览器会记住登录状态。
+    </small>
+  </div>
+
+  <!-- 创建任务表单 -->
+  <div class="card bg-dark border-secondary mb-4">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0"><i class="bi bi-plus-circle"></i> 新建采集任务</h5>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('crawler.create_task') }}">
+        <div class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label text-light">京东商品链接</label>
+            <input type="text" name="jd_url" class="form-control"
+                   placeholder="https://item.jd.com/100142456646.html" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label text-light">选择品牌</label>
+            <select name="brand_id" class="form-select" required>
+              <option value="">-- 选择品牌 --</option>
+              {% for brand in brands %}
+              <option value="{{ brand.id }}">{{ brand.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label text-light">采集页数</label>
+            <input type="number" name="max_pages" class="form-control" value="10" min="1" max="50">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-play-fill"></i> 开始采集
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 任务列表 -->
+  <div class="card bg-dark border-secondary">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 text-light"><i class="bi bi-list-task"></i> 任务列表</h5>
+      <small class="text-muted">运行中的任务会每5秒自动刷新状态</small>
+    </div>
+    <div class="card-body p-0">
+      {% if tasks %}
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>品牌</th>
+              <th>京东链接</th>
+              <th>状态</th>
+              <th>已采集</th>
+              <th>开始时间</th>
+              <th>完成/失败时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in tasks %}
+            <tr id="task-row-{{ task.id }}" data-task-id="{{ task.id }}" data-status="{{ task.status }}">
+              <td>{{ task.id }}</td>
+              <td>{{ task.brand.name if task.brand else '未指定' }}</td>
+              <td class="text-truncate" style="max-width:200px;">
+                <a href="{{ task.jd_url }}" target="_blank" class="text-info">
+                  {{ task.jd_url | truncate(40) }}
+                </a>
+              </td>
+              <td class="task-status">
+                {% if task.status == 'running' %}
+                  <span class="badge bg-warning text-dark">
+                    <span class="spinner-border spinner-border-sm"></span> 采集中
+                  </span>
+                {% elif task.status == 'completed' %}
+                  <span class="badge bg-success">✓ 已完成</span>
+                {% elif task.status == 'failed' %}
+                  <span class="badge bg-danger" title="{{ task.error_msg }}">✗ 失败</span>
+                {% else %}
+                  <span class="badge bg-secondary">等待中</span>
+                {% endif %}
+              </td>
+              <td class="task-count">{{ task.total_count }} 条</td>
+              <td>{{ task.start_time.strftime('%m-%d %H:%M') if task.start_time else '-' }}</td>
+              <td>{{ task.end_time.strftime('%m-%d %H:%M') if task.end_time else '-' }}</td>
+              <td>
+                {% if task.error_msg %}
+                <button class="btn btn-outline-info btn-sm" onclick="alert('{{ task.error_msg }}')">
+                  <i class="bi bi-info-circle"></i>
+                </button>
+                {% endif %}
+                <form method="POST" action="{{ url_for('crawler.delete_task', task_id=task.id) }}"
+                      class="d-inline" onsubmit="return confirm('确定删除？')">
+                  <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox" style="font-size:3rem;"></i>
+        <p class="mt-2">暂无采集任务，请创建一个新任务</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- 自动刷新运行中任务的状态 -->
+<script>
+(function() {
+  function refreshRunningTasks() {
+    const rows = document.querySelectorAll('tr[data-status="running"], tr[data-status="pending"]');
+    rows.forEach(row => {
+      const taskId = row.dataset.taskId;
+      fetch(`/crawler/status/${taskId}`)
+        .then(r => r.json())
+        .then(data => {
+          row.dataset.status = data.status;
+          const statusCell = row.querySelector('.task-status');
+          const countCell = row.querySelector('.task-count');
+          countCell.textContent = data.total_count + ' 条';
+
+          if (data.status === 'running') {
+            statusCell.innerHTML = '<span class="badge bg-warning text-dark"><span class="spinner-border spinner-border-sm"></span> 采集中</span>';
+          } else if (data.status === 'completed') {
+            statusCell.innerHTML = '<span class="badge bg-success">✓ 已完成</span>';
+          } else if (data.status === 'failed') {
+            statusCell.innerHTML = '<span class="badge bg-danger">✗ 失败</span>';
+          }
+        })
+        .catch(() => {});
+    });
+  }
+
+  // 每5秒刷新一次
+  setInterval(refreshRunningTasks, 5000);
+})();
+</script>
+{% endblock %}

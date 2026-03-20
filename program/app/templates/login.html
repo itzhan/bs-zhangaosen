@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}登录 — 京东手机评论分析系统{% endblock %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card fade-in">
+    <div class="text-center mb-3">
+      <div style="width:48px;height:48px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;">
+        <i class="bi bi-phone"></i>
+      </div>
+    </div>
+    <h2 class="text-center">欢迎回来</h2>
+    <p class="auth-subtitle text-center">登录京东手机评论分析系统</p>
+
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">用户名</label>
+        <input type="text" name="username" class="form-control" placeholder="请输入用户名" required autofocus>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">密码</label>
+        <input type="password" name="password" class="form-control" placeholder="请输入密码" required>
+      </div>
+      <button type="submit" class="btn btn-primary-custom w-100 py-2">
+        <i class="bi bi-box-arrow-in-right me-1"></i>登录
+      </button>
+    </form>
+    <p class="text-center mt-3 mb-0" style="font-size:0.9rem;">
+      还没有账号？<a href="{{ url_for('auth.register') }}">立即注册</a>
+    </p>
+    <p class="text-center mt-2">
+      <a href="{{ url_for('main.index') }}" style="font-size:0.85rem;color:var(--text-muted);">← 返回首页</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
