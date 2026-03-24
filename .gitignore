@@ -1,47 +1,58 @@
-# === OS ===
-.DS_Store
-Thumbs.db
-Desktop.ini
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+.pytest_cache/
+.mypy_cache/
 
-# === IDE ===
-.idea/
-*.iml
-*.iws
-*.ipr
-.vscode/
-*.swp
-*.swo
-*~
+# === 虚拟环境 ===
+venv/
+.venv/
+env/
 
-# === Java / Maven ===
-**/target/
-*.class
-*.jar
+# === 大文件 / 压缩包 ===
+*.tar.gz
+*.tar.bz2
+*.zip
+*.rar
+*.7z
 *.war
 *.ear
 
-# === Node / Frontend ===
-**/node_modules/
-**/dist/
-*.local
-.env.local
-.env.*.local
+# === Hadoop / Spark 分发包 ===
+program/hadoop-*.tar.gz
 
-# === Logs ===
-.logs/
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === 浏览器数据 ===
+chrome_user_data/
+program/chrome_user_data/
+
+# === 日志 ===
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.logs/
+program/.logs/
 
-# === Runtime ===
-.pids/
-*.pid
-*.seed
-*.pid.lock
+# === Node ===
+node_modules/
 
-# === Build cache ===
-.cache/
-.temp/
-.tmp/
+# === Docker 运行时 ===
+program/output/
+
+# === 模型文件（如果很大） ===
+*.h5
+*.hdf5
+*.pkl
+*.model
+*.pt
+*.pth
