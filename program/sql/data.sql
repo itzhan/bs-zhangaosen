@@ -3,22 +3,22 @@
 -- 评论数据通过 import_data.py 脚本从 CSV/Excel 导入
 -- ============================================================
 
+SET NAMES utf8mb4;
 USE jd_comment_analysis;
 
 -- ---------- 管理员账号 ----------
 -- 密码: admin123  (使用 werkzeug generate_password_hash 生成)
-INSERT INTO users (username, password_hash, nickname, role) VALUES
-('admin', 'scrypt:32768:8:1$placeholder$admin123hash', '管理员', 'admin');
+INSERT IGNORE INTO users (username, password_hash, nickname, role) VALUES
+('admin', 'scrypt:32768:8:1$mNt0rD6VtemIVHRG$06048cbe10dc902525b805b13a7743d4c9ae54f77026a61931a17506e80ffad57af1bc74b68e6d530e7d30594e1df4a545ef16e70241e3b1ecd53c93f665856f', '管理员', 'admin');
 
 -- ---------- 测试用户 ----------
 -- 密码: user123
-INSERT INTO users (username, password_hash, nickname, role) VALUES
-('user', 'scrypt:32768:8:1$placeholder$user123hash', '测试用户', 'user');
+INSERT IGNORE INTO users (username, password_hash, nickname, role) VALUES
+('user', 'scrypt:32768:8:1$0RHoTw7WvtXWimFb$fb72136a77219b401c58ac72f792d2ff897c5d7d5a8fb860ab3bfe514c5a0036da4dcba9ae1bc0d35acac6c8e363cc5754779bf2867bf5a29fa9fd9f83fbc94b', '测试用户', 'user');
 
--- 注意：上述密码哈希为占位值，实际运行 import_data.py 会正确生成哈希
 
 -- ---------- 品牌初始数据 ----------
-INSERT INTO brands (name, full_name, description) VALUES
+INSERT IGNORE INTO brands (name, full_name, description) VALUES
 ('iPhone17', 'Apple iPhone 17', 'Apple 最新旗舰手机，搭载 A19 芯片，支持 Apple Intelligence'),
 ('OPPO Reno', 'OPPO Reno 系列', 'OPPO 中端旗舰，主打拍照和轻薄设计'),
 ('vivo X300', 'vivo X300 系列', 'vivo 影像旗舰，蔡司光学镜头系统'),

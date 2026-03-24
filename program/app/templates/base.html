@@ -45,6 +45,16 @@
               <i class="bi bi-cloud-download me-1"></i>数据采集
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and 'analysis.behavior' in request.endpoint %}active{% endif %}" href="{{ url_for('analysis.behavior') }}">
+              <i class="bi bi-people me-1"></i>行为分析
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint and 'model_compare' in request.endpoint %}active{% endif %}" href="{{ url_for('model_compare.compare') }}">
+              <i class="bi bi-diagram-3 me-1"></i>模型对比
+            </a>
+          </li>
         </ul>
         <ul class="navbar-nav">
           {% if current_user.is_authenticated %}

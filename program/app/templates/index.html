@@ -107,11 +107,19 @@
         <div class="metric-card">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="metric-label">推荐 #{{ loop.index }}</div>
+              <div class="metric-label">推荐 #{{ loop.index }}
+                {% if r.method == 'hybrid' %}
+                  <span class="badge bg-success" style="font-size:0.65rem;">ALS混合</span>
+                {% elif r.method == 'als' %}
+                  <span class="badge bg-primary" style="font-size:0.65rem;">协同过滤</span>
+                {% else %}
+                  <span class="badge bg-secondary" style="font-size:0.65rem;">规则推荐</span>
+                {% endif %}
+              </div>
               <div style="font-weight:600;font-size:1.1rem;margin:0.5rem 0;">{{ r.name }}</div>
-              <div style="font-size:0.85rem;color:var(--text-muted);">综合评分: {{ r.composite_score }}</div>
+              <div style="font-size:0.85rem;color:var(--text-muted);">综合评分: {{ r.get('hybrid_score', r.get('composite_score', '')) }}</div>
             </div>
-            <span class="badge-positive" style="font-size:0.85rem;">{{ r.pos_rate }}%</span>
+            <span class="badge-positive" style="font-size:0.85rem;">{{ r.get('pos_rate', '') }}%</span>
           </div>
           <div class="mt-2">
             <a href="{{ url_for('brand.detail', brand_id=r.id) }}" class="btn btn-sm btn-accent">查看详情</a>

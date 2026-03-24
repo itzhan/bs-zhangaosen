@@ -50,21 +50,27 @@ def import_data():
         # 创建表
         db.create_all()
 
-        # 创建管理员（如果不存在）
+        # 创建或修复管理员
         admin = User.query.filter_by(username='admin').first()
         if not admin:
             admin = User(username='admin', nickname='管理员', role='admin')
             admin.set_password('admin123')
             db.session.add(admin)
             print('[+] 创建管理员账号: admin / admin123')
+        elif 'placeholder' in (admin.password_hash or ''):
+            admin.set_password('admin123')
+            print('[*] 修复管理员密码哈希: admin / admin123')
 
-        # 创建普通用户
+        # 创建或修复普通用户
         user = User.query.filter_by(username='user').first()
         if not user:
             user = User(username='user', nickname='测试用户', role='user')
             user.set_password('user123')
             db.session.add(user)
             print('[+] 创建测试用户: user / user123')
+        elif 'placeholder' in (user.password_hash or ''):
+            user.set_password('user123')
+            print('[*] 修复测试用户密码哈希: user / user123')
 
         db.session.commit()
 
@@ -114,46 +120,67 @@ def import_data():
                 continue
 
             count = 0
+            errors = 0
             for _, row in df.iterrows():
-                # 解析时间
-                ct = None
-                if '评论时间' in df.columns and pd.notna(row.get('评论时间')):
-                    try:
-                        ct = pd.to_datetime(row['评论时间'])
-                    except Exception:
-                        pass
+                try:
+                    # 解析时间
+                    ct = None
+                    if '评论时间' in df.columns and pd.notna(row.get('评论时间')):
+                        try:
+                            ct = pd.to_datetime(row['评论时间'])
+                        except Exception:
+                            pass
 
-                # 关键词
-                kws = parse_keywords(row.get('关键词', ''))
+                    # 关键词
+                    kws = parse_keywords(row.get('关键词', ''))
 
-                # 颜色/型号（过滤掉误入的图片URL）
-                color = str(row.get('商品_颜色', '') or row.get('商品颜色', '') or '').strip()
-                model = str(row.get('商品_型号', '') or row.get('商品型号', '') or '').strip()
-                if color.startswith('http') or len(color) > 100:
-                    color = ''
-                if model.startswith('http') or len(model) > 100:
-                    model = ''
+                    # 颜色/型号（过滤掉误入的图片URL）
+                    color = str(row.get('商品_颜色', '') or row.get('商品颜色', '') or '').strip()
+                    model = str(row.get('商品_型号', '') or row.get('商品型号', '') or '').strip()
+                    if color.startswith('http') or len(color) > 100:
+                        color = ''
+                    if model.startswith('http') or len(model) > 100:
+                        model = ''
 
-                comment = Comment(
-                    brand_id=brand.id,
-                    comment_id=str(row.get('评论ID', '')),
-                    comment_time=ct,
-                    content=str(row.get('评论内容', '')),
-                    cleaned_content=str(row.get('清洗后评论', '')),
-                    score=int(row.get('评论得分', 5)) if pd.notna(row.get('评论得分')) else 5,
-                    user_nickname=str(row.get('用户昵称', '')),
-                    color=color,
-                    model=model,
-                    sentiment_score=float(row.get('情感得分', 0.5)) if pd.notna(row.get('情感得分')) else 0.5,
-                    sentiment_label=str(row.get('情感标签', '中性')),
-                    keywords=kws,
-                )
-                db.session.add(comment)
-                count += 1
+                    # 安全获取情感标签：必须是 ENUM 允许的值
+                    raw_label = row.get('情感标签')
+                    if pd.isna(raw_label) or str(raw_label).strip() not in ('正向', '中性', '负向'):
+                        s_label = '中性'
+                    else:
+                        s_label = str(raw_label).strip()
+
+                    # 安全获取情感得分
+                    raw_score = row.get('情感得分')
+                    s_score = float(raw_score) if pd.notna(raw_score) else 0.5
+
+                    # 安全获取内容
+                    content = str(row.get('评论内容', '')) if pd.notna(row.get('评论内容')) else ''
+                    cleaned = str(row.get('清洗后评论', '')) if pd.notna(row.get('清洗后评论')) else ''
+
+                    comment = Comment(
+                        brand_id=brand.id,
+                        comment_id=str(row.get('评论ID', '')) if pd.notna(row.get('评论ID')) else '',
+                        comment_time=ct,
+                        content=content,
+                        cleaned_content=cleaned,
+                        score=int(row.get('评论得分', 5)) if pd.notna(row.get('评论得分')) else 5,
+                        user_nickname=str(row.get('用户昵称', '')) if pd.notna(row.get('用户昵称')) else '',
+                        color=color,
+                        model=model,
+                        sentiment_score=s_score,
+                        sentiment_label=s_label,
+                        keywords=kws,
+                    )
+                    db.session.add(comment)
+                    count += 1
+                except Exception as e:
+                    errors += 1
+                    if errors <= 3:
+                        print(f'    [!] 跳过行: {e}')
 
             db.session.commit()
             total_imported += count
-            print(f'[+] {brand_name}: 导入 {count} 条评论')
+            print(f'[+] {brand_name}: 导入 {count} 条评论' + (f' (跳过 {errors} 条)' if errors else ''))
 
         print(f'\n=== 导入完成，共 {total_imported} 条评论 ===')
 

@@ -34,6 +34,15 @@
         <a class="nav-link {% if request.endpoint == 'admin.tasks' %}active{% endif %}" href="{{ url_for('admin.tasks') }}">
           <i class="bi bi-cloud-download"></i>爬虫任务
         </a>
+        <a class="nav-link {% if request.endpoint == 'analysis.monitor' %}active{% endif %}" href="{{ url_for('analysis.monitor') }}">
+          <i class="bi bi-activity"></i>系统监控
+        </a>
+        <a class="nav-link {% if request.endpoint and 'hdfs' in request.endpoint %}active{% endif %}" href="{{ url_for('hdfs.index') }}">
+          <i class="bi bi-hdd-network"></i>HDFS 管理
+        </a>
+        <a class="nav-link {% if request.endpoint and 'spark' in request.endpoint %}active{% endif %}" href="{{ url_for('spark.index') }}">
+          <i class="bi bi-lightning-charge"></i>Spark 分析
+        </a>
         <hr style="border-color:rgba(255,255,255,0.1);margin:1rem 1.5rem;">
         <a class="nav-link" href="{{ url_for('main.index') }}">
           <i class="bi bi-arrow-left"></i>返回前台

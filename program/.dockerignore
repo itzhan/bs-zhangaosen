@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+venv/
+.git
+.gitignore
+.DS_Store
+chrome_user_data/
+.logs/
+*.egg-info
+.pytest_cache
+node_modules

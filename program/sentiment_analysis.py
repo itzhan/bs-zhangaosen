@@ -121,7 +121,7 @@ def analyze_single(
 
     df = load_dataframe(input_path)
     if "评论内容" not in df.columns:
-        raise ValueError(f"{input_path.name} 缺少“评论内容”列，无法做情感分析。")
+        raise ValueError(f"{input_path.name} 缺少评论内容列，无法做情感分析。")
 
     base_cols = [
         "评论ID",
@@ -143,23 +143,61 @@ def analyze_single(
 
     df["分词"] = df["清洗后评论"].apply(tokenize)
     df["关键词"] = df["清洗后评论"].apply(extract_keywords)
-    df["情感得分"] = df["清洗后评论"].apply(sentiment_score)
-    df["情感标签"] = df["情感得分"].apply(sentiment_label)
+
+    # SnowNLP 词典法分析
+    df["SnowNLP情感得分"] = df["清洗后评论"].apply(sentiment_score)
+    df["SnowNLP情感标签"] = df["SnowNLP情感得分"].apply(sentiment_label)
+
+    # LSTM 深度学习分析（可选）
+    lstm_available = False
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from app.services.lstm_model import predict as lstm_predict
+
+        def _lstm_analyze(text):
+            result = lstm_predict(text)
+            if result:
+                return pd.Series([result['score'], result['label']])
+            return pd.Series([None, None])
+
+        lstm_results = df["清洗后评论"].apply(_lstm_analyze)
+        df["LSTM情感得分"] = lstm_results[0]
+        df["LSTM情感标签"] = lstm_results[1]
+        lstm_available = True
+        print(f"  ✓ LSTM 模型已启用")
+    except Exception as e:
+        print(f"  ! LSTM 模型未就绪: {e}，仅使用 SnowNLP")
+        df["LSTM情感得分"] = None
+        df["LSTM情感标签"] = None
+
+    # 最终情感（优先 LSTM）
+    df["情感得分"] = df["LSTM情感得分"].fillna(df["SnowNLP情感得分"])
+    df["情感标签"] = df["LSTM情感标签"].fillna(df["SnowNLP情感标签"])
 
     summary = {
         "文件名": input_path.name,
         "总评论数": int(len(df)),
-        "平均情感得分": round(df["情感得分"].mean(), 4),
-        "情感分布": df["情感标签"].value_counts().to_dict(),
-        "高频关键词": (
-            pd.Series(jieba.lcut(" ".join(df["清洗后评论"].tolist())))
-            .pipe(lambda s: s[s.str.len() > 1])
-            .pipe(lambda s: s[~s.isin(STOPWORDS)])
-            .value_counts()
-            .head(30)
-            .to_dict()
-        ),
+        "平均情感得分(SnowNLP)": round(df["SnowNLP情感得分"].mean(), 4),
+        "情感分布(SnowNLP)": df["SnowNLP情感标签"].value_counts().to_dict(),
+        "LSTM模型": "已启用" if lstm_available else "未就绪",
     }
+    if lstm_available:
+        summary["平均情感得分(LSTM)"] = round(df["LSTM情感得分"].dropna().mean(), 4)
+        summary["情感分布(LSTM)"] = df["LSTM情感标签"].dropna().value_counts().to_dict()
+        # 一致率
+        valid = df[df["LSTM情感标签"].notna()]
+        agree = (valid["SnowNLP情感标签"] == valid["LSTM情感标签"]).sum()
+        summary["两方法一致率"] = f"{round(agree / len(valid) * 100, 1)}%" if len(valid) > 0 else "N/A"
+
+    summary["高频关键词"] = (
+        pd.Series(jieba.lcut(" ".join(df["清洗后评论"].tolist())))
+        .pipe(lambda s: s[s.str.len() > 1])
+        .pipe(lambda s: s[~s.isin(STOPWORDS)])
+        .value_counts()
+        .head(30)
+        .to_dict()
+    )
 
     output_path = output_dir / f"{input_path.stem}输出.csv"
     summary_path = output_dir / f"{input_path.stem}输出_summary.json"
@@ -168,7 +206,10 @@ def analyze_single(
         json.dump(summary, f, ensure_ascii=False, indent=2)
 
     print(f"{input_path.name} 情感分析完成 -> {output_path.name}")
-    print(f"情感分布: {summary['情感分布']}")
+    print(f"SnowNLP 分布: {summary.get('情感分布(SnowNLP)', {})}")
+    if lstm_available:
+        print(f"LSTM   分布: {summary.get('情感分布(LSTM)', {})}")
+        print(f"一致率: {summary.get('两方法一致率', 'N/A')}")
     return df, summary, output_path
 
 

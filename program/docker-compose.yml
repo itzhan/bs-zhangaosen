@@ -1,0 +1,142 @@
+# ============================================================
+#  京东手机评论分析系统 — Docker Compose (Hadoop + Spark 集群版)
+#  一键启动: docker-compose up -d
+# ============================================================
+
+
+services:
+  # ==================== Hadoop HDFS 集群 ====================
+
+  # NameNode — HDFS 主节点
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: jd-namenode
+    restart: unless-stopped
+    ports:
+      - "9870:9870"   # HDFS Web UI
+      - "9000:9000"   # HDFS RPC
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=jd-comment-cluster
+    env_file:
+      - ./hadoop.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # DataNode — HDFS 数据节点
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: jd-datanode
+    restart: unless-stopped
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./hadoop.env
+    depends_on:
+      namenode:
+        condition: service_healthy
+
+  # ==================== MySQL 数据库 ====================
+
+  mysql:
+    image: mysql:8.0
+    container_name: jd-comment-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ab123168
+      MYSQL_DATABASE: jd_comment_analysis
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./sql/data.sql:/docker-entrypoint-initdb.d/02-data.sql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pab123168"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ==================== Flask 应用 (含 Spark) ====================
+
+  app:
+    build:
+      context: .
+      args:
+        - HTTP_PROXY=${HTTP_PROXY:-}
+        - HTTPS_PROXY=${HTTPS_PROXY:-}
+    container_name: jd-comment-app
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      # MySQL
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=jd_comment_analysis
+      - DB_USER=root
+      - DB_PASS=ab123168
+      - SECRET_KEY=jd-comment-docker-2026
+      - FLASK_ENV=production
+      # HDFS
+      - HDFS_NAMENODE=hdfs://namenode:9000
+      - HADOOP_CONF_DIR=/app/hadoop-conf
+    volumes:
+      - ./评论:/app/评论:ro
+      - ./output:/app/output
+      - app_models:/app/models
+    depends_on:
+      mysql:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_started
+    command: >
+      bash -c "
+        echo '========================================='
+        echo '  京东手机评论分析系统 — 启动流程'
+        echo '========================================='
+
+        echo '[1/5] 等待 HDFS 就绪...'
+        sleep 15
+
+        echo '[2/5] 初始化 HDFS 目录并上传数据...'
+        python hdfs_init.py || echo '[!] HDFS 初始化跳过（HDFS 可能未就绪）'
+
+        echo '[3/5] 导入评论数据到 MySQL...'
+        python import_data.py || echo '[!] 数据导入失败，请检查日志'
+
+        echo '[4/5] 检查/训练 LSTM 模型...'
+        if [ ! -f models/lstm_sentiment.pt ]; then
+          echo '  训练 LSTM 情感模型...'
+          python train_lstm.py --source db --epochs 10 || echo '[!] LSTM 训练失败'
+        else
+          echo '  ✓ LSTM 模型已存在，跳过训练'
+        fi
+
+        echo '[5/5] 启动 Flask 应用...'
+        python run.py
+      "
+
+volumes:
+  hadoop_namenode:
+    driver: local
+  hadoop_datanode:
+    driver: local
+  mysql_data:
+    driver: local
+  app_models:
+    driver: local

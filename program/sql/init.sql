@@ -3,6 +3,8 @@
 -- 数据库: jd_comment_analysis  字符集: utf8mb4
 -- ============================================================
 
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS jd_comment_analysis
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -50,7 +52,7 @@ CREATE TABLE comments (
     color           TEXT,
     model           TEXT,
     sentiment_score FLOAT DEFAULT 0.5,
-    sentiment_label ENUM('正向','中性','负向') DEFAULT '中性',
+    sentiment_label VARCHAR(10) DEFAULT '中性',
     keywords        JSON,
     create_time     DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (brand_id) REFERENCES brands(id),

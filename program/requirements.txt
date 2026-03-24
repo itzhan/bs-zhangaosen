@@ -15,6 +15,14 @@ jieba>=0.42.0
 snownlp>=0.12.0
 scikit-learn>=1.0.0
 
+# ========== 深度学习 (LSTM 情感分类) ==========
+# 使用 CPU 版本 (~200MB) 替代完整版 (~2GB)，毕设无需 GPU
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+
+# ========== 大数据处理 (Spark) ==========
+pyspark>=3.5.0
+
 # ========== 可视化(静态图表用) ==========
 matplotlib>=3.5.0
 wordcloud>=1.9.0
@@ -25,6 +33,10 @@ pyecharts>=2.0.0
 # ========== 爬虫 ==========
 DrissionPage>=4.0.0
 
+# ========== 系统监控 ==========
+psutil>=5.9.0
+
 # ========== 其他 ==========
 scipy>=1.8.0
 werkzeug>=2.3.0
+

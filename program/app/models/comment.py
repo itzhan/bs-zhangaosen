@@ -18,7 +18,7 @@ class Comment(db.Model):
     color = db.Column(db.Text, default='')
     model = db.Column(db.Text, default='')
     sentiment_score = db.Column(db.Float, default=0.5)
-    sentiment_label = db.Column(db.Enum('正向', '中性', '负向'), default='中性')
+    sentiment_label = db.Column(db.String(10), default='中性')
     keywords = db.Column(db.JSON, default=list)
     create_time = db.Column(db.DateTime, default=datetime.now)
 

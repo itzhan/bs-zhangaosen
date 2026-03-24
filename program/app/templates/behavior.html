@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}用户行为分析{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <h4 class="mb-4">📊 用户行为分析</h4>
+
+  <!-- 概览卡片 -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-2">
+      <div class="card text-center shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">评论用户数</div>
+          <div class="fs-3 fw-bold text-primary">{{ data.engagement.unique_commenters }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card text-center shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">总评论数</div>
+          <div class="fs-3 fw-bold text-success">{{ data.engagement.total_comments }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card text-center shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">人均评论</div>
+          <div class="fs-3 fw-bold text-info">{{ data.engagement.avg_comments_per_user }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card text-center shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">注册用户</div>
+          <div class="fs-3 fw-bold text-warning">{{ data.engagement.total_users }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card text-center shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">收藏总数</div>
+          <div class="fs-3 fw-bold text-danger">{{ data.engagement.total_favorites }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图表区域 -->
+  <div class="row g-4">
+    <!-- 时段活跃度 -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">⏰ 评论时段分布</div>
+        <div class="card-body">
+          <div id="chart-hourly" style="height: 320px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户画像标签 -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">🏷️ 用户画像标签</div>
+        <div class="card-body">
+          <div id="chart-tags" style="height: 320px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 评论长度分布 -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">📝 评论长度分布</div>
+        <div class="card-body">
+          <div id="chart-length" style="height: 320px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 评分分布 -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">⭐ 各品牌评分分布</div>
+        <div class="card-body">
+          <div id="chart-rating" style="height: 320px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://assets.pyecharts.org/assets/echarts.min.js"></script>
+<script>
+// 时段活跃度柱状图
+var chartHourly = echarts.init(document.getElementById('chart-hourly'));
+var hourlyData = {{ data.hourly_activity | tojson }};
+chartHourly.setOption({
+  tooltip: { trigger: 'axis' },
+  xAxis: { type: 'category', data: hourlyData.map(d => d.hour + '时'), axisLabel: { interval: 0, rotate: 45 }},
+  yAxis: { type: 'value', name: '评论数' },
+  series: [{ type: 'bar', data: hourlyData.map(d => d.count),
+    itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#83bff6'}, {offset: 1, color: '#188df0'}]) }
+  }]
+});
+
+// 用户画像标签
+var chartTags = echarts.init(document.getElementById('chart-tags'));
+var tagsData = {{ data.user_tags | tojson }};
+chartTags.setOption({
+  tooltip: { trigger: 'item' },
+  series: [{
+    type: 'pie', radius: ['35%', '65%'],
+    data: tagsData.map(d => ({ name: d.tag, value: d.count })),
+    label: { formatter: '{b}: {c} ({d}%)' }
+  }]
+});
+
+// 评论长度分布
+var chartLength = echarts.init(document.getElementById('chart-length'));
+var lengthData = {{ data.comment_length_dist | tojson }};
+chartLength.setOption({
+  tooltip: { trigger: 'axis' },
+  xAxis: { type: 'category', data: lengthData.map(d => d.range) },
+  yAxis: { type: 'value', name: '评论数' },
+  series: [{ type: 'bar', data: lengthData.map(d => d.count),
+    itemStyle: { color: '#91cc75' }
+  }]
+});
+
+// 各品牌评分分布
+var chartRating = echarts.init(document.getElementById('chart-rating'));
+var ratingData = {{ data.rating_distribution | tojson }};
+var brands = Object.keys(ratingData);
+var series = brands.map(function(brand) {
+  var bData = ratingData[brand];
+  var counts = [0,0,0,0,0];
+  bData.forEach(function(d) { if(d.rating >= 1 && d.rating <= 5) counts[d.rating-1] = d.count; });
+  return { name: brand, type: 'bar', stack: 'total', data: counts };
+});
+chartRating.setOption({
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }},
+  legend: { data: brands, type: 'scroll', bottom: 0 },
+  xAxis: { type: 'category', data: ['1分','2分','3分','4分','5分'] },
+  yAxis: { type: 'value' },
+  series: series
+});
+
+window.addEventListener('resize', function() {
+  chartHourly.resize(); chartTags.resize(); chartLength.resize(); chartRating.resize();
+});
+</script>
+{% endblock %}

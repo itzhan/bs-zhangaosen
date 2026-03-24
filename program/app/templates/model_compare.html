@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}模型对比分析 — LSTM vs SnowNLP{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="page-header">
+    <h2><i class="bi bi-diagram-3 me-2"></i>情感分析模型对比</h2>
+    <p class="breadcrumb-text"><a href="{{ url_for('main.index') }}">首页</a> / 模型对比分析</p>
+  </div>
+
+  <!-- 方法说明卡片 -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title"><span class="badge bg-primary me-2">方法一</span>SnowNLP 词典法</h5>
+          <p class="card-text text-muted mb-1">基于情感词典的无监督方法，直接计算文本情感倾向分数(0~1)。</p>
+          <small class="text-muted">优点: 无需训练，速度快 | 缺点: 对否定句、反讽等理解不足</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title"><span class="badge bg-success me-2">方法二</span>LSTM 深度学习</h5>
+          <p class="card-text text-muted mb-1">双向LSTM + Attention 机制，基于标注数据训练的三分类模型。</p>
+          <small class="text-muted">优点: 语义理解强，上下文感知 | 缺点: 需要标注数据，推理较慢</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not lstm_available %}
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>LSTM 模型未就绪</strong> — 请先运行 <code>python train_lstm.py</code> 训练模型后再查看对比结果。
+    下方仅展示 SnowNLP 结果。
+  </div>
+  {% endif %}
+
+  <!-- 对比数据表 -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header"><i class="bi bi-table me-2"></i>各品牌分析结果对比</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>品牌</th>
+              <th>评论数</th>
+              <th colspan="3" class="text-center table-primary">SnowNLP 词典法</th>
+              <th colspan="3" class="text-center table-success">LSTM 深度学习</th>
+              <th>一致率</th>
+            </tr>
+            <tr>
+              <th></th><th></th>
+              <th class="text-center">平均得分</th>
+              <th class="text-center">正向率</th>
+              <th class="text-center">正/中/负</th>
+              <th class="text-center">平均得分</th>
+              <th class="text-center">正向率</th>
+              <th class="text-center">正/中/负</th>
+              <th class="text-center"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in brands %}
+            <tr>
+              <td class="fw-bold">{{ b.name }}</td>
+              <td>{{ b.total }}</td>
+              <td class="text-center">{{ b.snow_avg }}</td>
+              <td class="text-center">{{ b.snow_pos_rate }}%</td>
+              <td class="text-center"><span class="text-success">{{ b.snow_pos }}</span> / <span class="text-secondary">{{ b.snow_mid }}</span> / <span class="text-danger">{{ b.snow_neg }}</span></td>
+              {% if b.lstm_available %}
+              <td class="text-center">{{ b.lstm_avg }}</td>
+              <td class="text-center">{{ b.lstm_pos_rate }}%</td>
+              <td class="text-center"><span class="text-success">{{ b.lstm_pos }}</span> / <span class="text-secondary">{{ b.lstm_mid }}</span> / <span class="text-danger">{{ b.lstm_neg }}</span></td>
+              <td class="text-center"><span class="badge bg-{{ 'success' if b.agree_rate > 70 else 'warning' }}">{{ b.agree_rate }}%</span></td>
+              {% else %}
+              <td class="text-center text-muted" colspan="3">模型未就绪</td>
+              <td class="text-center text-muted">—</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 对比图表 -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">📊 平均情感得分对比</div>
+        <div class="card-body">
+          <div id="chart-score" style="height: 350px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">📊 正向率对比</div>
+        <div class="card-body">
+          <div id="chart-pos-rate" style="height: 350px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">🎯 两种方法一致率</div>
+        <div class="card-body">
+          <div id="chart-agree" style="height: 350px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header">📋 方法对比总结</div>
+        <div class="card-body">
+          <table class="table table-sm">
+            <thead><tr><th>维度</th><th>SnowNLP</th><th>LSTM</th></tr></thead>
+            <tbody>
+              <tr><td>方法类型</td><td>无监督 — 情感词典</td><td>有监督 — 深度学习</td></tr>
+              <tr><td>训练数据</td><td>不需要</td><td>需要标注数据</td></tr>
+              <tr><td>分类粒度</td><td>连续分数(0~1) → 阈值划分</td><td>三分类(正/中/负)</td></tr>
+              <tr><td>语义理解</td><td>词级别</td><td>句子级别(上下文)</td></tr>
+              <tr><td>处理速度</td><td>快 (毫秒级)</td><td>较慢 (百毫秒级)</td></tr>
+              <tr><td>适用场景</td><td>快速批量分析</td><td>需要高准确率的场景</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://assets.pyecharts.org/assets/echarts.min.js"></script>
+<script>
+var brandsData = {{ brands | tojson }};
+var names = brandsData.map(b => b.name);
+
+// 平均得分对比柱状图
+var chartScore = echarts.init(document.getElementById('chart-score'));
+chartScore.setOption({
+  tooltip: { trigger: 'axis' },
+  legend: { data: ['SnowNLP', 'LSTM'] },
+  xAxis: { type: 'category', data: names, axisLabel: { rotate: 15 } },
+  yAxis: { type: 'value', name: '得分', min: 0, max: 1 },
+  series: [
+    { name: 'SnowNLP', type: 'bar', data: brandsData.map(b => b.snow_avg),
+      itemStyle: { color: '#3b82f6', borderRadius: [4,4,0,0] }, barGap: '20%' },
+    { name: 'LSTM', type: 'bar', data: brandsData.map(b => b.lstm_available ? b.lstm_avg : null),
+      itemStyle: { color: '#10b981', borderRadius: [4,4,0,0] } }
+  ]
+});
+
+// 正向率对比
+var chartPos = echarts.init(document.getElementById('chart-pos-rate'));
+chartPos.setOption({
+  tooltip: { trigger: 'axis', formatter: '{b}<br/>{a0}: {c0}%<br/>{a1}: {c1}%' },
+  legend: { data: ['SnowNLP', 'LSTM'] },
+  xAxis: { type: 'category', data: names, axisLabel: { rotate: 15 } },
+  yAxis: { type: 'value', name: '正向率 %', max: 100 },
+  series: [
+    { name: 'SnowNLP', type: 'bar', data: brandsData.map(b => b.snow_pos_rate),
+      itemStyle: { color: '#3b82f6', borderRadius: [4,4,0,0] }, barGap: '20%' },
+    { name: 'LSTM', type: 'bar', data: brandsData.map(b => b.lstm_available ? b.lstm_pos_rate : null),
+      itemStyle: { color: '#10b981', borderRadius: [4,4,0,0] } }
+  ]
+});
+
+// 一致率
+var chartAgree = echarts.init(document.getElementById('chart-agree'));
+chartAgree.setOption({
+  tooltip: { trigger: 'axis', formatter: '{b}: {c}%' },
+  xAxis: { type: 'category', data: names, axisLabel: { rotate: 15 } },
+  yAxis: { type: 'value', name: '一致率 %', max: 100 },
+  series: [{
+    type: 'bar', data: brandsData.map(b => b.agree_rate),
+    itemStyle: {
+      color: function(params) {
+        return params.value > 70 ? '#10b981' : (params.value > 50 ? '#f59e0b' : '#ef4444');
+      },
+      borderRadius: [4,4,0,0]
+    },
+    label: { show: true, position: 'top', formatter: '{c}%' }
+  }]
+});
+
+window.addEventListener('resize', function() {
+  chartScore.resize(); chartPos.resize(); chartAgree.resize();
+});
+</script>
+{% endblock %}
