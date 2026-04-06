@@ -25,13 +25,7 @@
       <div class="metric-label">评论总数</div>
     </div>
   </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="metric-card">
-      <div class="metric-icon red"><i class="bi bi-cloud-download"></i></div>
-      <div class="metric-value">{{ task_count }}</div>
-      <div class="metric-label">爬虫任务</div>
-    </div>
-  </div>
+
 </div>
 
 <div class="chart-box">
@@ -40,7 +34,7 @@
     <a href="{{ url_for('admin.users') }}" class="btn btn-primary-custom"><i class="bi bi-people me-1"></i>用户管理</a>
     <a href="{{ url_for('admin.brands') }}" class="btn btn-accent"><i class="bi bi-phone me-1"></i>品牌管理</a>
     <a href="{{ url_for('admin.comments') }}" class="btn btn-outline-secondary"><i class="bi bi-chat-dots me-1"></i>评论管理</a>
-    <a href="{{ url_for('admin.tasks') }}" class="btn btn-outline-secondary"><i class="bi bi-cloud-download me-1"></i>爬虫任务</a>
+    <a href="{{ url_for('analysis.monitor') }}" class="btn btn-outline-secondary"><i class="bi bi-activity me-1"></i>系统监控</a>
   </div>
 </div>
 {% endblock %}

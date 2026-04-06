@@ -1,0 +1,79 @@
+# ============================================================
+#  京东手机评论分析系统 — Docker Compose 开发版
+#  一键启动: docker compose -f docker-compose.dev.yml up
+#  特性: 源码热加载 · 轻量无Hadoop · 快速构建
+# ============================================================
+
+services:
+  # ==================== MySQL 数据库 ====================
+  mysql:
+    image: mysql:8.0
+    container_name: jd-dev-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ab123168
+      MYSQL_DATABASE: jd_comment_analysis
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - dev_mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./sql/data.sql:/docker-entrypoint-initdb.d/02-data.sql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pab123168"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  # ==================== Flask 应用 (开发模式) ====================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: jd-dev-app
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=jd_comment_analysis
+      - DB_USER=root
+      - DB_PASS=ab123168
+      - SECRET_KEY=jd-dev-2026
+      - FLASK_DEBUG=1
+    volumes:
+      # ★ 挂载源码目录，实现热加载
+      - ./app:/app/app
+      - ./run.py:/app/run.py
+      - ./import_data.py:/app/import_data.py
+      - ./sentiment_analysis.py:/app/sentiment_analysis.py
+      - ./评论:/app/评论:ro
+      - ./output:/app/output
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: >
+      bash -c "
+        echo '==========================================='
+        echo '  开发模式 — 京东手机评论分析系统'
+        echo '==========================================='
+        echo ''
+        echo '[1/2] 导入评论数据...'
+        python import_data.py 2>&1 | tail -5 || echo '[!] 数据导入跳过'
+        echo ''
+        echo '[2/2] 启动 Flask (热加载已开启)...'
+        echo '  修改 app/ 下的代码会自动重载！'
+        echo ''
+        python run.py
+      "
+
+volumes:
+  dev_mysql_data:
+    driver: local

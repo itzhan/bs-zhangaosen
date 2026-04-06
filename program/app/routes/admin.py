@@ -6,7 +6,6 @@ from app import db
 from app.models.user import User
 from app.models.brand import Brand
 from app.models.comment import Comment
-from app.models.task import CrawlerTask
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -29,12 +28,10 @@ def dashboard():
     user_count = User.query.count()
     brand_count = Brand.query.count()
     comment_count = Comment.query.count()
-    task_count = CrawlerTask.query.count()
     return render_template('admin/dashboard.html',
                            user_count=user_count,
                            brand_count=brand_count,
-                           comment_count=comment_count,
-                           task_count=task_count)
+                           comment_count=comment_count)
 
 
 @admin_bp.route('/users')
@@ -113,11 +110,3 @@ def comments():
                            pagination=pagination,
                            brands=brands_list,
                            brand_id=brand_id)
-
-
-@admin_bp.route('/tasks')
-@admin_required
-def tasks():
-    """爬虫任务管理"""
-    task_list = CrawlerTask.query.order_by(CrawlerTask.create_time.desc()).all()
-    return render_template('admin/tasks.html', tasks=task_list)

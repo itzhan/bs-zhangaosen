@@ -1,0 +1,31 @@
+# ============================================================
+# 京东手机评论分析系统 — 开发版 Docker 镜像 (轻量)
+# 仅 Python 3.10，无 Hadoop/Spark，体积小，启动快
+# ============================================================
+FROM python:3.10-slim
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONIOENCODING=utf-8 PYTHONDONTWRITEBYTECODE=1
+
+# pip 国内镜像
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip config set global.trusted-host mirrors.aliyun.com
+
+# 仅安装必要系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 先安装依赖（利用 Docker 缓存层）
+COPY requirements-dev.txt .
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
+# 创建必要目录
+RUN mkdir -p output/sentiment_batch output/spark_results models .logs
+
+EXPOSE 5001
+
+# 开发模式：Flask debug + 热加载
+ENV FLASK_DEBUG=1
+CMD ["python", "run.py"]

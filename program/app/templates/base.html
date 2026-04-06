@@ -41,11 +41,6 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint and 'crawler' in request.endpoint %}active{% endif %}" href="{{ url_for('crawler.index') }}">
-              <i class="bi bi-cloud-download me-1"></i>数据采集
-            </a>
-          </li>
-          <li class="nav-item">
             <a class="nav-link {% if request.endpoint and 'analysis.behavior' in request.endpoint %}active{% endif %}" href="{{ url_for('analysis.behavior') }}">
               <i class="bi bi-people me-1"></i>行为分析
             </a>
