@@ -4,21 +4,40 @@
 {% block admin_content %}
 <h4 class="fw-bold mb-4"><i class="bi bi-chat-dots me-2"></i>评论管理</h4>
 <div class="chart-box">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <form method="get" class="d-flex gap-2">
-      <select name="brand_id" class="form-select form-select-sm" style="width:160px;" onchange="this.form.submit()">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <form method="get" class="d-flex gap-2 flex-wrap">
+      <select name="brand_id" class="form-select form-select-sm" style="width:140px;">
         <option value="">所有品牌</option>
         {% for b in brands %}
         <option value="{{ b.id }}" {% if b.id == brand_id %}selected{% endif %}>{{ b.name }}</option>
         {% endfor %}
       </select>
+      <select name="sentiment" class="form-select form-select-sm" style="width:120px;">
+        <option value="">所有情感</option>
+        {% for s in sentiment_labels %}
+        <option value="{{ s }}" {% if s == sentiment %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="keyword" value="{{ keyword }}" placeholder="评论内容关键词"
+             class="form-control form-control-sm" style="width:200px;">
+      <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i> 搜索</button>
+      <a href="{{ url_for('admin.comments') }}" class="btn btn-sm btn-outline-secondary">重置</a>
     </form>
-    <span class="text-muted" style="font-size:0.85rem;">共 {{ pagination.total }} 条评论</span>
+    <div class="d-flex align-items-center gap-3">
+      <span class="text-muted" style="font-size:0.85rem;">共 {{ pagination.total }} 条</span>
+      <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#commentModal"
+              onclick="openAddModal()">
+        <i class="bi bi-plus-lg"></i> 新增评论
+      </button>
+    </div>
   </div>
+
   <div class="table-responsive">
     <table class="table table-custom">
       <thead>
-        <tr><th>ID</th><th>品牌</th><th>内容</th><th>情感</th><th>得分</th><th>时间</th></tr>
+        <tr>
+          <th>ID</th><th>品牌</th><th>内容</th><th>情感</th><th>得分</th><th>时间</th><th style="width:140px;">操作</th>
+        </tr>
       </thead>
       <tbody>
         {% for c in pagination.items %}
@@ -33,20 +52,137 @@
           </td>
           <td>{{ c.sentiment_score }}</td>
           <td>{{ c.comment_time.strftime('%Y-%m-%d') if c.comment_time else '' }}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#commentModal"
+                    onclick="openEditModal({{ c.id }})">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <form method="post" action="{{ url_for('admin.delete_comment', comment_id=c.id, page=pagination.page) }}"
+                  style="display:inline;" onsubmit="return confirm('确定删除评论 #{{ c.id }} 吗？');">
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
   {% if pagination.pages > 1 %}
   <nav>
     <ul class="pagination justify-content-center">
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-        {% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="{{ url_for('admin.comments', page=p, brand_id=brand_id) }}">{{ p }}</a></li>
+        {% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="{{ url_for('admin.comments', page=p, brand_id=brand_id, keyword=keyword, sentiment=sentiment) }}">{{ p }}</a></li>
         {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
       {% endfor %}
     </ul>
   </nav>
   {% endif %}
 </div>
+
+<!-- 新增/编辑 模态框 -->
+<div class="modal fade" id="commentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="commentForm" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title" id="commentModalTitle">新增评论</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">品牌 *</label>
+              <select name="brand_id" class="form-select" required>
+                <option value="">请选择</option>
+                {% for b in brands %}
+                <option value="{{ b.id }}">{{ b.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">用户昵称</label>
+              <input type="text" name="user_nickname" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">评论内容 *</label>
+              <textarea name="content" class="form-control" rows="3" required></textarea>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">评分 (1-5)</label>
+              <input type="number" name="score" class="form-control" min="1" max="5" value="5">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">情感标签</label>
+              <select name="sentiment_label" class="form-select">
+                {% for s in sentiment_labels %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">情感分数 (0-1)</label>
+              <input type="number" name="sentiment_score" class="form-control" step="0.01" min="0" max="1" value="0.5">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">评论时间</label>
+              <input type="datetime-local" name="comment_time" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">颜色</label>
+              <input type="text" name="color" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">机型</label>
+              <input type="text" name="model" class="form-control">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const ADD_URL = "{{ url_for('admin.add_comment') }}";
+  const EDIT_URL_TPL = "{{ url_for('admin.edit_comment', comment_id=0, page=pagination.page) }}";
+  const GET_URL_TPL = "{{ url_for('admin.get_comment', comment_id=0) }}";
+
+  function openAddModal() {
+    document.getElementById('commentModalTitle').textContent = '新增评论';
+    const form = document.getElementById('commentForm');
+    form.reset();
+    form.action = ADD_URL;
+  }
+
+  async function openEditModal(id) {
+    document.getElementById('commentModalTitle').textContent = '编辑评论 #' + id;
+    const form = document.getElementById('commentForm');
+    form.reset();
+    form.action = EDIT_URL_TPL.replace('/0/', '/' + id + '/');
+    try {
+      const res = await fetch(GET_URL_TPL.replace('/0', '/' + id));
+      const data = await res.json();
+      form.brand_id.value = data.brand_id || '';
+      form.user_nickname.value = data.user_nickname || '';
+      form.content.value = data.content || '';
+      form.score.value = data.score ?? 5;
+      form.sentiment_label.value = data.sentiment_label || '中性';
+      form.sentiment_score.value = data.sentiment_score ?? 0.5;
+      form.color.value = data.color || '';
+      form.model.value = data.model || '';
+      if (data.comment_time) {
+        form.comment_time.value = data.comment_time.replace(' ', 'T').slice(0, 16);
+      }
+    } catch (e) {
+      alert('加载评论失败: ' + e);
+    }
+  }
+</script>
 {% endblock %}

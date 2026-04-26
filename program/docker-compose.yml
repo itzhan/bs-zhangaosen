@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     ports:
       - "9870:9870"   # HDFS Web UI
-      - "9000:9000"   # HDFS RPC
+      - "9100:9000"   # HDFS RPC（宿主机 9100 → 容器 9000，避开本机 9000/9001 占用）
     volumes:
       - hadoop_namenode:/hadoop/dfs/name
     environment:
